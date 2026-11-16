@@ -32,7 +32,7 @@ export type PostInput = Omit<Post, 'id'>;
 // R: 목록 조회 (GET /posts)
 export const getPosts = async (signal?: AbortSignal, page = 1) => {
   const res = await api.get<Post[]>('/posts', {
-    params: { _page: page, _limit: 10 },
+    params: { _page: page, _limit: 10, _sort: 'id', _order: 'desc' },
     signal,
   });
   return res.data;
