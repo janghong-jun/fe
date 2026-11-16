@@ -593,18 +593,6 @@
       "id": 99,
       "title": "연습용 글 제목 99",
       "body": "연습용 글 99번의 내용입니다. 서버에 저장되는지 확인해 보세요."
-    },
-    {
-      "userId": 1,
-      "id": 101,
-      "title": "\"server\": \"json-server --watch db.json --port 3001 --middlewares scripts/json-server-middleware.cjs\",",
-      "body": "\"server\": \"json-server --watch db.json --port 3001 --middlewares scripts/json-server-middleware.cjs\","
-    },
-    {
-      "userId": 1,
-      "id": 102,
-      "title": "1",
-      "body": "1"
     }
   ]
 }
