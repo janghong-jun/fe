@@ -12,6 +12,7 @@ import {
   updatePost,
   type Post,
   type PostInput,
+  type PostSortOrder,
 } from '@/api/posts';
 import PostList from '@/components/PostList';
 import PostDetail from '@/components/PostDetail';
@@ -23,9 +24,11 @@ const App = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [sortOrder, setSortOrder] = useState<PostSortOrder>('desc');
   const queryClient = useQueryClient();
+  const postsQueryKey = ['posts', sortOrder] as const;
 
-  // 목록: 쪽 단위로 냉장고 ['posts'] 칸에 쌓음
+  // 목록: 정렬 기준별로 쪽 단위 캐시에 쌓음
   const {
     data,
     error: loadError,
@@ -34,35 +37,26 @@ const App = () => {
     hasNextPage, // 다음 쪽이 더 있는지
     isFetchingNextPage, // 다음 쪽을 받아 오는 중인지
   } = useInfiniteQuery({
-    queryKey: ['posts'],
-    queryFn: ({ signal, pageParam }) => getPosts(signal, pageParam),
+    queryKey: postsQueryKey,
+    queryFn: ({ signal, pageParam }) => getPosts(signal, pageParam, sortOrder),
     initialPageParam: 1, // 처음엔 1쪽부터
-    // 이 서버는 글이 100개(10쪽)라서 10쪽 전까지만 다음 쪽이 있음
-    getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
-      lastPageParam < 10 ? lastPageParam + 1 : undefined,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length === 10 ? lastPageParam + 1 : undefined,
   });
   const posts = data?.pages.flat() ?? []; // 쪽별 묶음을 한 줄로 펼침
 
   // 임시 도구: 수정·삭제를 각 쪽 안에서 적용
   const setPosts = (update: (prev: Post[]) => Post[]) =>
     queryClient.setQueryData<InfiniteData<Post[], number>>(
-      ['posts'],
+      postsQueryKey,
       (old) => old && { ...old, pages: old.pages.map(update) },
     );
-  // 생성: 서버에 주문 → 성공하면 냉장고 목록 맨 앞에 추가
+  // 생성: 서버에 저장한 뒤 정렬 기준에 맞는 목록을 다시 조회
   const createMutation = useMutation({
     mutationFn: createPost,
     onMutate: () => setError(null),
-    onSuccess: (created) => {
-      // JSONPlaceholder는 항상 id 101을 돌려주므로 로컬에서 고유 id 부여
-      queryClient.setQueryData<InfiniteData<Post[], number>>(
-        ['posts'],
-        (old) =>
-          old && {
-            ...old,
-            pages: [[created, ...old.pages[0]], ...old.pages.slice(1)],
-          },
-      );
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
     onError: (e) => setError(e.message),
   });
@@ -71,7 +65,7 @@ const App = () => {
   const deleteMutation = useMutation({
     mutationFn: deletePost,
     onMutate: () => setError(null),
-    onSuccess: (_data, id) => {
+    onSuccess: async (_data, id) => {
       setPosts((prev) => prev.filter((p) => p.id !== id));
       setSelectedId((cur) => (cur === id ? null : cur));
       if (editingId === id) {
@@ -79,6 +73,7 @@ const App = () => {
         setTitle('');
         setBody('');
       }
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
     onError: (e) => setError(e.message),
   });
@@ -155,7 +150,22 @@ const App = () => {
       />
 
       <div className="app-layout">
-        <div aria-busy={isLoading} style={{ textAlign: 'center' }}>
+        <div aria-busy={isLoading}>
+          <div style={{ textAlign: 'right' }}>
+            <label className="post-sort-control">
+              정렬 기준
+              <select
+                value={sortOrder}
+                onChange={(event) => {
+                  const order = event.target.value;
+                  if (order === 'asc' || order === 'desc') setSortOrder(order);
+                }}
+              >
+                <option value="desc">최신순</option>
+                <option value="asc">오래된순</option>
+              </select>
+            </label>
+          </div>
           {isLoading && <p>목록 불러오는 중...</p>}
           {/* 목록 불러오기 실패 안내 */}
           {loadError && (

@@ -27,12 +27,17 @@ export interface Post {
   body: string;
 }
 
+export type PostSortOrder = 'asc' | 'desc';
 export type PostInput = Omit<Post, 'id'>;
 
 // R: 목록 조회 (GET /posts)
-export const getPosts = async (signal?: AbortSignal, page = 1) => {
+export const getPosts = async (
+  signal?: AbortSignal,
+  page = 1,
+  order: PostSortOrder = 'desc',
+) => {
   const res = await api.get<Post[]>('/posts', {
-    params: { _page: page, _limit: 10, _sort: 'id', _order: 'desc' },
+    params: { _page: page, _limit: 10, _sort: 'id', _order: order },
     signal,
   });
   return res.data;
