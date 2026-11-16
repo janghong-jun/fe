@@ -72,6 +72,17 @@
   }
 }
 
+.post-form-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-secondary {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
 // 목록
 .post-list {
   display: grid;

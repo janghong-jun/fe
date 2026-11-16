@@ -2,12 +2,24 @@ import { useState, type FormEvent } from 'react';
 import type { PostInput } from '@/api/posts';
 
 interface PostFormProps {
+  title: string;
+  body: string;
+  isEditing: boolean;
+  onTitleChange: (title: string) => void;
+  onBodyChange: (body: string) => void;
   onSubmit: (data: PostInput) => Promise<void>;
+  onCancel: () => void;
 }
 
-const PostForm = ({ onSubmit }: PostFormProps) => {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+const PostForm = ({
+  title,
+  body,
+  isEditing,
+  onTitleChange,
+  onBodyChange,
+  onSubmit,
+  onCancel,
+}: PostFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -17,8 +29,6 @@ const PostForm = ({ onSubmit }: PostFormProps) => {
     setIsSubmitting(true);
     try {
       await onSubmit({ userId: 1, title: title.trim(), body: body.trim() });
-      setTitle('');
-      setBody('');
     } finally {
       setIsSubmitting(false); // 성공/실패와 무관하게 버튼 복구
     }
@@ -34,7 +44,8 @@ const PostForm = ({ onSubmit }: PostFormProps) => {
           type="text"
           value={title}
           required
-          onChange={(e) => setTitle(e.target.value)}
+          disabled={isSubmitting}
+          onChange={(e) => onTitleChange(e.target.value)}
         />
       </div>
       <div className="post-form-row">
@@ -44,18 +55,31 @@ const PostForm = ({ onSubmit }: PostFormProps) => {
           rows={3}
           value={body}
           required
-          onChange={(e) => setBody(e.target.value)}
+          disabled={isSubmitting}
+          onChange={(e) => onBodyChange(e.target.value)}
         />
       </div>
       {/* 전송 중 중복 클릭 방지 + 상태 전달 */}
-      <button
-        type="submit"
-        className="btn btn-primary"
-        disabled={isSubmitting}
-        aria-busy={isSubmitting}
-      >
-        {isSubmitting ? '등록 중...' : '글 등록'}
-      </button>
+      <div className="post-form-actions">
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={isSubmitting}
+          aria-busy={isSubmitting}
+        >
+          {isEditing ? '수정하기' : '등록하기'}
+        </button>
+        {isEditing && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={isSubmitting}
+            onClick={onCancel}
+          >
+            취소
+          </button>
+        )}
+      </div>
     </form>
   );
 };

@@ -20,7 +20,9 @@ import PostForm from '@/components/PostForm';
 const App = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
   const queryClient = useQueryClient();
 
   // 목록: 쪽 단위로 냉장고 ['posts'] 칸에 쌓음
@@ -58,53 +60,77 @@ const App = () => {
         (old) =>
           old && {
             ...old,
-            pages: [[{ ...created, id: Date.now() }, ...old.pages[0]], ...old.pages.slice(1)],
+            pages: [[created, ...old.pages[0]], ...old.pages.slice(1)],
           },
       );
     },
     onError: (e) => setError(e.message),
   });
 
-  // PostForm이 끝나길 기다리므로, 끝날 때까지 기다릴 수 있는 버전을 씀
-  const handleCreate = async (data: PostInput) => {
-    try {
-      await createMutation.mutateAsync(data);
-    } catch {
-      // 에러 문구는 onError가 이미 화면에 띄움
-    }
-  };
-
   // 삭제: 서버에 주문 → 성공하면 냉장고 목록에서 제거
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      if (id <= 100) await deletePost(id); // 로컬 글은 서버 호출 불필요
-    },
-    onMutate: () => setError(null), // 주문 넣기 직전
+    mutationFn: deletePost,
+    onMutate: () => setError(null),
     onSuccess: (_data, id) => {
-      // 성공했을 때
       setPosts((prev) => prev.filter((p) => p.id !== id));
       setSelectedId((cur) => (cur === id ? null : cur));
+      if (editingId === id) {
+        setEditingId(null);
+        setTitle('');
+        setBody('');
+      }
     },
-    onError: (e) => setError(e.message), // 실패했을 때
+    onError: (e) => setError(e.message),
   });
 
   const handleDelete = (id: number) => deleteMutation.mutate(id);
 
   // 수정: 서버에 주문 → 성공하면 냉장고 목록의 그 글만 바꿈
   const updateMutation = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) => updatePost(id, { title }),
+    mutationFn: ({ id, data }: { id: number; data: PostInput }) => updatePost(id, data),
     onMutate: () => setError(null),
-    onSuccess: (updated, { id }) => {
+    onSuccess: async (updated, { id }) => {
       setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+      queryClient.setQueryData<Post>(['post', id], updated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['posts'] }),
+        queryClient.invalidateQueries({ queryKey: ['post', id] }),
+      ]);
     },
     onError: (e) => setError(e.message),
   });
 
   // 지금 수정 중인 글 번호 (처리 중이 아니면 null)
   const updatingId = updateMutation.isPending ? (updateMutation.variables?.id ?? null) : null;
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setBody('');
+  };
+  const handleSubmit = async (data: PostInput) => {
+    try {
+      if (editingId === null) {
+        await createMutation.mutateAsync(data);
+      } else {
+        await updateMutation.mutateAsync({ id: editingId, data });
+      }
+      resetForm();
+    } catch {
+      // Mutation error handlers display the error while preserving the form values.
+    }
+  };
+  const handleSelect = (id: number) => {
+    setSelectedId(id);
+  };
+  const handleEdit = (id: number) => {
+    const post = posts.find((post) => post.id === id);
 
-  const handleUpdate = (id: number, title: string) => updateMutation.mutate({ id, title });
+    if (!post) return;
 
+    setEditingId(post.id);
+    setTitle(post.title);
+    setBody(post.body);
+  };
   const selectedPost = posts.find((p) => p.id === selectedId);
 
   return (
@@ -118,7 +144,15 @@ const App = () => {
         </p>
       )}
 
-      <PostForm onSubmit={handleCreate} />
+      <PostForm
+        title={title}
+        body={body}
+        isEditing={editingId !== null}
+        onTitleChange={setTitle}
+        onBodyChange={setBody}
+        onSubmit={handleSubmit}
+        onCancel={resetForm}
+      />
 
       <div className="app-layout">
         <div aria-busy={isLoading} style={{ textAlign: 'center' }}>
@@ -135,10 +169,10 @@ const App = () => {
               <PostList
                 posts={posts}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
                 updatingId={updatingId}
+                onSelect={handleSelect}
+                onDelete={handleDelete}
+                onUpdate={handleEdit}
               />
               {hasNextPage && (
                 <button
