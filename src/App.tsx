@@ -199,9 +199,7 @@ const App = () => {
             </>
           )}
         </div>
-        {selectedId !== null && (
-          <PostDetail key={selectedId} id={selectedId} fallback={selectedPost} />
-        )}
+        {selectedId !== null && <PostDetail id={selectedId} fallback={selectedPost} />}
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ interface PostDetailProps {
   fallback?: Post;
 }
 
-const PostDetail = ({ id, fallback }: PostDetailProps) => {
+const PostDetail = ({ id }: PostDetailProps) => {
   const { data, error, isLoading, isFetching, isPlaceholderData, refetch } = useQuery({
     queryKey: ['post', id],
     queryFn: ({ signal }) => getPost(id, signal),
