@@ -16,7 +16,7 @@ pnpm dev          # http://localhost:5173
 | `pnpm dev` | 개발 서버 (proxy 적용) |
 | `pnpm build` | 타입 체크 + 빌드 |
 | `pnpm typecheck` | 타입 체크만 |
-| `pnpm lint` | oxlint |
+| `pnpm lint` | Biome |
 | `pnpm format` | prettier |
 
 ## 구조

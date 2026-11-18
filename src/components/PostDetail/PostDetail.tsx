@@ -7,31 +7,37 @@ interface PostDetailProps {
 }
 
 const PostDetail = ({ id, fallback }: PostDetailProps) => {
-  const { data, error, isLoading } = useQuery({
+  const { data, error, isLoading, isFetching, isPlaceholderData, refetch } = useQuery({
     queryKey: ['post', id],
     queryFn: ({ signal }) => getPost(id, signal),
-    initialData: fallback,
-    staleTime: 0,
-    gcTime: 0,
+    enabled: id > 0,
+    placeholderData: (previousData) => previousData,
   });
-
+  console.log({
+    isPlaceholderData,
+    isFetching,
+    title: data?.title,
+  });
   return (
-    <section className="post-detail" aria-live="polite" aria-busy={isLoading}>
-      {isLoading && <p>불러오는 중...</p>}
+    <>
+      <section className="post-detail" aria-live="polite" aria-busy={isLoading}>
+        {isPlaceholderData && <p>이전 게시글 데이터 표시 중...</p>}
+        {isFetching && <p>불러오는 중...</p>}
+        {error && (
+          <p role="alert" className="post-error">
+            {error.message}
+          </p>
+        )}
 
-      {error && (
-        <p role="alert" className="post-error">
-          {error.message}
-        </p>
-      )}
-
-      {data && !isLoading && (
-        <article>
-          <h2 className="post-detail-title">{data.title}</h2>
-          <p className="post-detail-body">{data.body}</p>
-        </article>
-      )}
-    </section>
+        {data && !isLoading && (
+          <article>
+            <h2 className="post-detail-title">{data.title}</h2>
+            <p className="post-detail-body">{data.body}</p>
+          </article>
+        )}
+      </section>
+      <button onClick={() => refetch()}>다시 불러오기</button>
+    </>
   );
 };
 
